@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';  // Import useNavigate
+import { useNavigate } from 'react-router-dom';
 
 // Sample questions for the quiz (Random English Grammar and Vocabulary)
 const sampleQuestions = [
@@ -80,7 +80,7 @@ const Quiz = () => {
     const socket = new WebSocket(`ws://127.0.0.1:8001/ws/quiz/${quiz_id}/${session_id}/`);
 
     socket.onmessage = (event) => {
-      var point_message = JSON.parse(event.data)
+      const point_message = JSON.parse(event.data);
       const [username, points] = point_message.message.split(':');
       setLeaderboard((prevLeaderboard) => {
         const existingUser = prevLeaderboard.find(user => user.username === username);
@@ -115,8 +115,9 @@ const Quiz = () => {
     <div className="container mx-auto mt-5">
       <div className="grid grid-cols-3 gap-4">
         {/* Quiz Section */}
-        <div className="quiz-section p-4 border border-gray-300 rounded col-span-2 overflow-y-auto" style={{ height: '500px' }}>
-          <h2 className="text-xl font-bold mb-4">Quiz</h2>
+        <div className="quiz-section p-4 border border-gray-300 rounded col-span-2 overflow-y-auto" style={{ height: '100vh' }}>
+          <h2 className="text-2xl font-bold mb-4">Quiz</h2>
+          <p className="text-lg font-semibold mb-4">Username: {username}</p>
           {sampleQuestions.map((question, index) => (
             <div key={index} className="mb-4">
               <p className="mb-2">{question.question}</p>
@@ -126,7 +127,7 @@ const Quiz = () => {
                     type="radio"
                     name={`question-${index}`}
                     value={option.charAt(0)}
-                    onChange={() => handleAnswerChange(index, option.charAt(0))}
+                    onChange={() => handleAnswerChange(index, option.charAt(0))} 
                   />
                   <span className="ml-2">{option}</span>
                 </label>
@@ -148,15 +149,25 @@ const Quiz = () => {
         </div>
 
         {/* Leaderboard Section */}
-        <div className="leaderboard-section p-4 border border-gray-300 rounded fixed right-0 top-0 h-[500px] w-[250px] bg-white shadow-lg">
-          <h2 className="text-xl font-bold mb-4">Leaderboard</h2>
+        <div className="leaderboard-section p-4 border border-gray-300 rounded fixed right-0 top-0 h-[100vh] w-[550px] bg-white shadow-lg">
+          <h2 className="text-2xl font-bold mb-4 text-center">Leaderboard</h2>
           {sortedLeaderboard.length > 0 ? (
-            sortedLeaderboard.map((user, index) => (
-              <div key={index} className="flex justify-between">
-                <span>{user.username}</span>
-                <span>{user.points} points</span>
-              </div>
-            ))
+            <div className="space-y-2">
+              {sortedLeaderboard.map((user, index) => (
+                <div
+                  key={index}
+                  className={`flex justify-between items-center p-2 rounded-md ${
+                    user.username === username ? 'bg-yellow-300 text-black font-bold' : 'bg-gray-100'
+                  }`}
+                >
+                  <span>
+                    {user.username}
+                    {user.username === username && ' (You)'}
+                  </span>
+                  <span>{user.points} points</span>
+                </div>
+              ))}
+            </div>
           ) : (
             <p>No leaderboard data available</p>
           )}
