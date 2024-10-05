@@ -1,0 +1,26 @@
+# PyCharm specific files
+.idea/
+
+# Django-specific files
+db.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+
+# Build output and cache
+/build/
+/dist/
+*.log
+*.gz
+*.zip
+
+# Editor config files
+.editorconfig
+.vscode/
+
+# Node.js specific
+node_modules/
+npm-debug.log
+
+# Temporary files
+*.tmp
+*.swp
