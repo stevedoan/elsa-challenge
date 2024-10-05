@@ -18,7 +18,8 @@ const sampleQuestions = [
 const Quiz = () => {
   const [answers, setAnswers] = useState(new Array(10).fill(null)); // Stores user's selected answers
   const [leaderboard, setLeaderboard] = useState([]); // Leaderboard data
-  const navigate = useNavigate();  // Use navigate instead of useHistory
+  const [currentPoints, setCurrentPoints] = useState(0); // Store current points
+  const navigate = useNavigate(); // Use navigate instead of useHistory
   const username = localStorage.getItem('username');
   const quiz_id = localStorage.getItem('quiz_id');
   const session_id = localStorage.getItem('session_id');
@@ -36,6 +37,7 @@ const Quiz = () => {
       (score, answer, index) => score + (answer === sampleQuestions[index].correct ? 5 : 0),
       0
     );
+    setCurrentPoints(points); // Set current points for display
 
     try {
       const response = await fetch('http://127.0.0.1:8000/api/sapi/store_points/', {
@@ -108,66 +110,68 @@ const Quiz = () => {
     localStorage.removeItem('username');
     localStorage.removeItem('quiz_id');
     localStorage.removeItem('session_id');
-    navigate('/');  // Use navigate instead of history.push
+    navigate('/'); // Use navigate instead of history.push
   };
 
   return (
-    <div className="container mx-auto mt-5">
+    <div className="container mx-auto mt-5 h-screen">
       <div className="grid grid-cols-3 gap-4">
         {/* Quiz Section */}
-        <div className="quiz-section p-4 border border-gray-300 rounded col-span-2 overflow-y-auto" style={{ height: '100vh' }}>
-          <h2 className="text-2xl font-bold mb-4">Quiz</h2>
-          <p className="text-lg font-semibold mb-4">Username: {username}</p>
-          {sampleQuestions.map((question, index) => (
-            <div key={index} className="mb-4">
-              <p className="mb-2">{question.question}</p>
-              {question.options.map((option, i) => (
-                <label key={i} className="block mb-1">
-                  <input
-                    type="radio"
-                    name={`question-${index}`}
-                    value={option.charAt(0)}
-                    onChange={() => handleAnswerChange(index, option.charAt(0))} 
-                  />
-                  <span className="ml-2">{option}</span>
-                </label>
-              ))}
-            </div>
-          ))}
-          <button
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700"
-            onClick={handleSubmitQuiz}
-          >
-            Submit Quiz
-          </button>
-          <button
-            className="bg-red-500 text-white px-4 py-2 rounded ml-2 hover:bg-red-700"
-            onClick={handleCancelQuiz}
-          >
-            Cancel Quiz
-          </button>
+        <div className="quiz-section col-span-2 flex flex-col h-full border border-gray-300 rounded bg-gray-100">
+          {/* Part 1: Fixed Header */}
+          <div className="flex justify-between items-center bg-blue-500 text-white p-2 rounded-t">
+            <h2 className="text-xl font-bold">Quiz</h2>
+            <span className="text-lg">{username}</span>
+            <span className="text-lg">Points: {currentPoints}</span>
+          </div>
+
+          {/* Part 2: Scrollable Questions */}
+          <div className="flex-grow overflow-y-auto p-2 bg-gray-200" style={{ height: '700px' }}>
+            {sampleQuestions.map((question, index) => (
+              <div key={index} className="mb-4">
+                <p className="mb-2 font-semibold">{question.question}</p>
+                {question.options.map((option, i) => (
+                  <label key={i} className="block mb-1">
+                    <input
+                      type="radio"
+                      name={`question-${index}`}
+                      value={option.charAt(0)}
+                      onChange={() => handleAnswerChange(index, option.charAt(0))}
+                    />
+                    <span className="ml-2">{option}</span>
+                  </label>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          {/* Part 3: Fixed Buttons at the Bottom */}
+          <div className="flex justify-between mt-4 p-2 bg-gray-300 rounded-b">
+            <button
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700"
+              onClick={handleSubmitQuiz}
+            >
+              Submit Quiz
+            </button>
+            <button
+              className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-700"
+              onClick={handleCancelQuiz}
+            >
+              Cancel Quiz
+            </button>
+          </div>
         </div>
 
         {/* Leaderboard Section */}
-        <div className="leaderboard-section p-4 border border-gray-300 rounded fixed right-0 top-0 h-[100vh] w-[550px] bg-white shadow-lg">
-          <h2 className="text-2xl font-bold mb-4 text-center">Leaderboard</h2>
+        <div className="leaderboard-section p-4 border border-gray-300 rounded bg-white shadow-lg h-full">
+          <h2 className="text-xl font-bold mb-4">Leaderboard</h2>
           {sortedLeaderboard.length > 0 ? (
-            <div className="space-y-2">
-              {sortedLeaderboard.map((user, index) => (
-                <div
-                  key={index}
-                  className={`flex justify-between items-center p-2 rounded-md ${
-                    user.username === username ? 'bg-yellow-300 text-black font-bold' : 'bg-gray-100'
-                  }`}
-                >
-                  <span>
-                    {user.username}
-                    {user.username === username && ' (You)'}
-                  </span>
-                  <span>{user.points} points</span>
-                </div>
-              ))}
-            </div>
+            sortedLeaderboard.map((user, index) => (
+              <div key={index} className={`flex justify-between ${user.username === username ? 'font-bold text-blue-600' : ''}`}>
+                <span>{index + 1}. {user.username} {user.username === username && <span className="text-green-500">(You)</span>}</span>
+                <span>{user.points} points</span>
+              </div>
+            ))
           ) : (
             <p>No leaderboard data available</p>
           )}
