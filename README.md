@@ -1,4 +1,4 @@
-# Welcome to the Real-Time Quiz Coding Challenge!
+![image](https://github.com/user-attachments/assets/7c59b8bc-02d6-410e-b63d-01f65d2ca5d2)# Welcome to the Real-Time Quiz Coding Challenge!
 
 This repository provides a solution for a real-time quiz feature within an English learning application. Users can join quizzes in real-time, answer questions, and compete with others, seeing their scores reflected instantly on a leaderboard.
 
@@ -72,4 +72,4 @@ Challenge URL: [elsa/coding-challenges](https://github.com/elsa/coding-challenge
    - Redis is also used to support real-time Pub/Sub messaging between services, working alongside Kafka for smaller events or real-time leaderboard updates.
    - Redis Sentinel ensures high availability by monitoring Redis nodes and automatically handling failover when necessary. This architecture is reliable and maintains the consistency required for event-driven operations.
 
-Demo Video: [Real-Time Quiz Coding Challenge Demo](https://drive.google.com/file/d/1cjY83Ad9lvlJrO3qOqqoz5o6minQjilr/view?usp=sharing)
+Demo Video: [Real-Time Quiz Coding Challenge Demo](https://youtu.be/Xim2UCWSx6A)
