@@ -6,7 +6,7 @@ Challenge URL: [elsa/coding-challenges](https://github.com/elsa/coding-challenge
 
 # System Design
 ## Architecture Diagram:
-![Architecture Diagram](diagrams/architecture.jpg)
+
 
 ## Component Descriptions:
 1. **Client (Web App and Mobile)**
