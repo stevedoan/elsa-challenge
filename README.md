@@ -1,4 +1,4 @@
-![image](https://github.com/user-attachments/assets/7c59b8bc-02d6-410e-b63d-01f65d2ca5d2)# Welcome to the Real-Time Quiz Coding Challenge!
+# Welcome to the Real-Time Quiz Coding Challenge!
 
 This repository provides a solution for a real-time quiz feature within an English learning application. Users can join quizzes in real-time, answer questions, and compete with others, seeing their scores reflected instantly on a leaderboard.
 
