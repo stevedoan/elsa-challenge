@@ -1,75 +1,126 @@
 # Welcome to the Real-Time Quiz Coding Challenge!
 
 This repository provides a solution for a real-time quiz feature within an English learning application. Users can join quizzes in real-time, answer questions, and compete with others, seeing their scores reflected instantly on a leaderboard.
+For the scope of this project, I have chosen the **Real-Time Leaderboard** feature to design.
 
 Challenge URL: [elsa/coding-challenges](https://github.com/elsa/coding-challenges)
 
 # System Design
-## Architecture Diagram:
+## **A. Outline use cases, constraints, and assumptions:**
 
+First of all, I want to clarify the requirements for the **Real-Time Leaderboard** in the Real-Time Vocabulary Quiz Coding Challenge from my perspective, with the following assumptions:
+
+1. This feature will apply to all Elsa users (approximately **40 million** in **100** countries).
+2. 20% of users are Daily Active Users (DAU) = **8 million** daily active users (based on my research of similar popular language learning apps like **Duolingo**, which have **15-20%** daily active users).
+3. The quiz challenge may last from **10** to **30** minutes.
+4. I assume each user participates in **2** quiz sessions per day, resulting in **16** million quiz sessions daily.
+5. Assuming 10% of active users are online during peak hours, we estimate **800,000** concurrent users per hour at peak times.
+6. If each user submits an answer every 20 seconds, we will have 800,000 / 20 = **40,000** writes per second at peak hours.
+7. Assuming a read-to-write ratio of **10:1**, there will be **400,000** read operations per second at peak hours.
+8. All participants will start the quiz session at the same time and must finish the quiz within the same time frame.
+9. According to constraint #8, there should be a waiting room for users to wait until the session has enough participants, similar to multiplayer games like League of Legends, PUBG, etc.
+10. A quiz session will only include users from the same region.
+11. The minimum number of participants per session is **5**, and the maximum is **20**.
+12. If the waiting room does not reach the minimum number of participants within **3** minutes, the room will be canceled.
+13. If the waiting room has enough participants and everyone is ready, the quiz session will start.
+14. When a user moves on to the next question, the system will automatically and immediately submit the current question.
+15. Users cannot go back to previously answered questions.
+16. There will be **3** criteria for calculating the leaderboard: current points, total wrong answers, and answer speed. For example, if 2 users have the same score, the one who answered in less time and with fewer wrong answers will rank higher.
+17. After a session closes, all users in that session will be able to view their report, including the time they joined, their score, and their rank.
+
+## **B. High-Level Architecture Overview:**
+This system uses microservice architecture with a distributed design to ensure scalability, performance, and reliability. The core components include:
+
+1. Client Layer (Mobile/Web App)
+2. API Gateway
+3. Quiz Session Management Service
+4. Leaderboard Management Service
+5. Score Calculation Service
+6. Pub/Sub Messaging System
+7. Firestore (Database for session data and leaderboard)
+8. Monitoring and Logging Tools (Cloud Monitoring, Cloud Logging)
+
+### Architecture Diagram (Main Components):
+![Architecture Diagram](diagrams/architecture.jpg)
 
 ## Component Descriptions:
-1. **Client (Web App and Mobile)**
-   - Role: The Client is the front-facing component where users interact with the application. It could be a web app or mobile app and is responsible for presenting the user interface and capturing user input.
-2. **Reserved Proxy and Load Balancer**
-   - Role: The Reserved Proxy and Load Balancer act as intermediaries between clients and backend services, ensuring efficient distribution of requests and improving the scalability and reliability of the system.
-   - Reverse Proxy: It forwards client requests to appropriate backend services while hiding the internal architecture from the client.
-   - Load Balancer: Distributes incoming traffic across multiple instances of backend services (e.g., multiple instances of User Service or Quiz Management Service) to avoid overloading a single server and to provide fault tolerance.
-3. **API Gateway**
-   - Role: The API Gateway is the entry point for all client requests in your microservices architecture. It acts as an intermediary, managing the communication between the clients (Web and Mobile) and the backend services (e.g., User Service, Quiz Management Service, Event Broker). The API Gateway helps streamline request routing, ensures security, provides centralized authentication/authorization, and handles load balancing.
-4. **User Service**
-   - Role: The User Service handles everything related to user authentication, authorization, and user profile management. It ensures that users can securely log in and access features based on their roles or permissions.
-5. **Quiz Management Service**
-   - Role: The Quiz Management Service is the core service that handles the entire lifecycle of quizzes. This includes managing quiz information, sessions, participants, and responses.It interacts with the User Service to validate user identities and check if they are allowed to participate in a quiz.
-   - Subscribes to the Event Broker for real-time quiz-related updates.
-6. **Event Broker**
-   - Role: The Event Broker (a messaging service, such as a message queue or pub/sub system) ensures real-time communication between different services. It handles broadcasting updates related to quiz scores and leaderboard rankings.
-   - Real-time Event Broadcasting: Handles score updates, leaderboard changes, or notifications related to quiz participation.
-   - Message Queue: Stores and forwards messages between services, ensuring that all relevant updates are processed even if some services are temporarily down.
-   - Leaderboard Updates: When a user completes a quiz or their score changes, the Event Broker broadcasts this information to services or clients that need to know.
-7. **Database**
-   - Role: The main persistent database for storing structured and unstructured data, including user information, quizzes, quiz responses, and historical leaderboard data.
-8. **Redis** (Caching and Support for Event Broker)
-   - Role: Redis is a high-performance in-memory data store primarily used for caching frequently accessed data and supporting the Event Broker with real-time event management.
-   - Caching: Used for fast access to frequently queried data (e.g., active quizzes, leaderboard info, user session tokens) to improve performance.
-   - Event Broker Support: Redis Pub/Sub can be used for the Event Broker to manage real-time message distribution between services.
-   - Session Storage: Temporarily stores user session data (authentication tokens, current session data) for fast retrieval.
+### A. Client Layer (Mobile/Web App):
+- **Purpose**: The mobile or web app will serve as the interface for users to join quiz sessions, submit answers, and view the leaderboard.
+- **Responsibilities**:
+   - Allow users to join a waiting room.
+   - Display real-time quiz questions and capture answers.
+   - Show real-time leaderboard updates after every question.
+   - Display the final report and rank at the end of the session.
+### B. API Gateway:
+- **Purpose**: Central access point for all services.
+- **Responsibilities**:
+   - Route requests from the client to the appropriate microservices.
+   - Handle user authentication, session management, and rate limiting.
+- **Service Recommendations**:
+   - Use GCP API Gateway for scalable routing, traffic management, and security.
+
+### C. Quiz Session Management Service:
+- **Purpose**: Manage the lifecycle of quiz sessions (waiting room, quiz start, progress tracking, and end).
+- **Responsibilities**:
+   - Create quiz sessions and manage waiting rooms.
+   - Track user progress through the quiz.
+   - Ensure users within a region join the same session (e.g., EU users join EU sessions).
+   - Automatically submit user answers when they move to the next question.
+   - Trigger automatic closure of a quiz session when it ends.
+- **Data Flow**:
+   - Create a quiz session with metadata (region, number of users, questions, start time).
+   - On answer submission, forward the answer to the Score Calculation Service and Leaderboard Service.
+- **Storage**:
+   - Firestore: Store session data (session ID, user IDs, progress, quiz questions).
+### D. Score Calculation Service:
+- **Purpose**: Calculate points for each user based on their answers, answer time, and accuracy.
+- **Responsibilities**:
+   - Receive answer submissions from the Quiz Session Management Service.
+   - Calculate scores based on correctness, speed, and wrong answers.
+   - Send calculated scores to the Leaderboard Management Service.
+- **Messaging**:
+   - Use Google Cloud Pub/Sub to decouple real-time answer submissions and score calculations.
+### E. Leaderboard Management Service:
+- **Purpose**: Manage real-time leaderboard updates for each quiz session.
+- **Responsibilities**:
+   - Store and update the current leaderboard based on user scores.
+   - Sort users by points, wrong answers, and speed.
+   - Publish leaderboard updates back to clients in real time via Firestore triggers or Pub/Sub.
+- **Data Flow**:
+   - Firestore: Store leaderboard data for each session in Firestore (e.g., user ID, points, rank, wrong answers, answer speed).
+- **Alternative**:
+   - If Firestore real-time triggers aren't sufficient for performance, a custom Pub/Sub fanout to deliver updates to clients could be used.
+### F. Pub/Sub Messaging System:
+- **Purpose**: Decouple services and provide real-time messaging for updates and triggers.
+- **Responsibilities**:
+   - Send answer submissions from the Quiz Session Management Service to the Score Calculation Service.
+   - Broadcast leaderboard updates from the Leaderboard Management Service to clients.
+   - Handle user events (quiz start, answer submission, session end) asynchronously.
+- **Storage**:
+   - Pub/Sub topics for sending updates and calculating scores in real time.
+### G. Firestore:
+- **Purpose**: Store quiz session and leaderboard data. Firestore is used for its global scale and low-latency access.
+- **Responsibilities**:
+   - Store quiz session details (session ID, user IDs, quiz progress).
+   - Store real-time leaderboard updates.
+   - Enable Firestore real-time triggers to broadcast leaderboard updates to users.
 
 ## Data Flow
-![Architecture Diagram](diagrams/dataflow.jpg)
-
-## Technology Justification
-1. **Client**: ReactJS (Web) and React Native (Mobile)
-   - ReactJS is a popular JavaScript library for building interactive user interfaces on the web.
-   - It offers a component-based architecture that simplifies the development of complex UIs.
-   - React Native allows us to reuse a significant portion of the codebase for mobile app development (iOS and Android), thus speeding up the development process.
-   - My familiarity with JavaScript allows me to maintain and enhance the codebase efficiently, with the added benefit of a large community and a wealth of documentation and resources.
-2. **Reverse Proxy and Load Balancer**: Nginx
-   - Nginx is a well-established, high-performance HTTP server and reverse proxy that is widely adopted in the industry. It can efficiently handle multiple simultaneous connections with minimal resource usage, making it ideal for high-traffic environments.
-   - Nginx also offers SSL termination, static content serving, and load balancing features, which are crucial for distributing traffic across backend services.
-3. **API Gateway**: Nginx
-   - Nginx is being utilized for its simplicity and ability to act as an API Gateway. It provides request routing, basic security (SSL termination), and integration with the reverse proxy and load balancer.
-   - While not as feature-rich as a dedicated API gateway, Nginx simplifies the architecture and operation by consolidating multiple layers into one, reducing operational overhead.
-   - This choice may be revisited in the future if the need arises for more API-specific features like rate limiting, JWT validation, or request transformation.
-4. **User Service**: Python Django Web API
-   - Django is a robust and well-documented web framework in Python, with a built-in admin panel, authentication system, and ORM (Object-Relational Mapping). It allows rapid development of the User Service, managing authentication, authorization, and user profiles.
-   - My familiarity with Python and Django ensures efficient development and maintenance of this service.
-   - Using Django REST Framework (DRF) ensures that the User Service can expose APIs in a RESTful manner, supporting integration with other services in the system.
-5. **Quiz Management Service**: Python Django Web API
-   - Django is also a suitable choice for the Quiz Management Service. It allows for the rapid development of RESTful APIs to manage quiz data, participants, and sessions.
-   - Django’s scalability, when coupled with a decoupled architecture, ensures that this service can handle increased load as the user base grows. My experience with Django ensures ease of development.
-   - Additionally, Django’s ecosystem includes robust third-party packages for integrating MongoDB, allowing flexible schema management and query capabilities.
-6. **Event Broker**: Apache Kafka
-   - Apache Kafka is the industry standard for distributed event streaming, making it an excellent choice for managing real-time score updates and broadcasting leaderboard changes. It is highly scalable, fault-tolerant, and capable of handling high-throughput events.
-   - Kafka’s ability to store events durably ensures reliable message processing, which is critical for real-time systems like leaderboards and quiz scoring.
-   - Kafka integrates well with both MongoDB and Redis, enabling smooth communication between services while maintaining data consistency across the system.
-7. **Database**: MongoDB (Single Replica Set)
-   - MongoDB is a NoSQL database that prioritizes BASE properties (Basically Available, Soft state, Eventual consistency) over strict ACID (Atomicity, Consistency, Isolation, Durability). This is ideal for scenarios where the system performs many read operations, such as fetching quiz information, leaderboard data, and user stats.
-   - A single replica set (1 Primary, multiple Secondaries) ensures the system can handle high read loads while maintaining sufficient availability. The secondary nodes handle read traffic, allowing horizontal scaling as read demands grow.
-   - MongoDB's flexible schema supports the dynamic nature of quiz data, where quiz structures can vary without rigid table schemas.
-8. **Caching and Event Broker Support**: Redis with Sentinel
-   - Redis is an in-memory data store known for its speed and simplicity, making it ideal for caching frequently accessed quiz data, leaderboard results, and user session data. This minimizes load on MongoDB and improves the overall system response time.
-   - Redis is also used to support real-time Pub/Sub messaging between services, working alongside Kafka for smaller events or real-time leaderboard updates.
-   - Redis Sentinel ensures high availability by monitoring Redis nodes and automatically handling failover when necessary. This architecture is reliable and maintains the consistency required for event-driven operations.
+1. **Quiz Session Creation**:
+   - Users request to join a quiz via the app.
+   - API Gateway routes the request to Quiz Session Management Service.
+   - The system checks if the user is already in an active session or if they should join a new waiting room.
+2. **Waiting Room**:
+   - The Quiz Session Management Service groups users into waiting rooms.
+   - Once enough users are in the room and everyone is ready, the quiz session starts.
+3. **Quiz Answer Submission**:
+   - As users submit answers, the Quiz Session Management Service forwards them via Pub/Sub to the Score Calculation Service.
+   - Scores are calculated based on correctness and speed, and the Leaderboard Management Service updates the leaderboard in Firestore.
+4. **Real-Time Leaderboard Updates**:
+   - The Leaderboard Management Service triggers real-time updates via Firestore triggers or Pub/Sub fanout.
+   - Users see live score changes and rankings in the app.
+5. **Quiz End and Report**:
+   - Once the quiz ends, the final leaderboard is saved in Firestore.
+   - Users receive a detailed session report showing their performance (points, rank, wrong answers, answer speed).
 
 Demo Video: [Real-Time Quiz Coding Challenge Demo](https://youtu.be/Xim2UCWSx6A)
